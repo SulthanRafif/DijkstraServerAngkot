@@ -8,42 +8,42 @@ app.use(cors());
 
 class App {
     static getLines() {
-        axios.get('http://localhost:3000/api/interchanges')
-            .then(response => {
-                response.data.forEach(i => {
-                    let idpoints = [];
-                    Graph.interchanges.set(i.idinterchange, idpoints);
-                })
-            })
-
-        axios.get('http://localhost:3000/api/lines')
-            .then(response => {
-                const data = response.data;
-
-                let linePromises = [];
-                let idlines = []
-
-                data.forEach(line => {
-                    if (parseInt(line.count)) {
-                        Graph.lines.set(line.idline, line);
-
-                        linePromises.push(
-                            axios.get(`http://localhost:3000/api/lines/${line.idline}`)
-                        );
-                        idlines.push(line.idline);
-                    }
-                });
-
-                Promise.all(linePromises).then(linepoints => {
-                    linepoints.forEach(points => {
-                        Graph.buildLine(idlines.shift(), points)
+        return Promise.all([
+            axios.get('http://localhost:3000/api/interchanges')
+                .then(response => {
+                    response.data.forEach(i => {
+                        let idpoints = [];
+                        Graph.interchanges.set(i.idinterchange, idpoints);
                     });
-                }, err => {
-                    console.error(err);
-                });
-            })
+                }),
+            axios.get('http://localhost:3000/api/lines')
+                .then(response => {
+                    const data = response.data;
+
+                    let linePromises = [];
+                    let idlines = []
+
+                    data.forEach(line => {
+                        if (parseInt(line.count)) {
+                            Graph.lines.set(line.idline, line);
+
+                            linePromises.push(
+                                axios.get(`http://localhost:3000/api/lines/${line.idline}`)
+                            );
+                            idlines.push(line.idline);
+                        }
+                    });
+
+                    return Promise.all(linePromises).then(linepoints => {
+                        linepoints.forEach(points => {
+                            Graph.buildLine(idlines.shift(), points)
+                        });
+                    });
+                })
+        ]);
     }
 }
+
 
 class Graph {
     static lines = new Map();
@@ -155,8 +155,6 @@ class Graph {
     }
 
     static getNearestPoint(point) {
-        console.log('nearest point')
-
         let distance = Number.MAX_VALUE;
         let nearestPoint = null;
 
@@ -232,45 +230,52 @@ class Dijkstra {
 }
 
 app.get('/api/getLatLng', (req, res) => {
-    const latSource = req.query.latSource
-    const lngSource = req.query.lngSource
+    const latSource = parseFloat(req.query.latSource);
+    const lngSource = parseFloat(req.query.lngSource);
 
-    const latDest = req.query.latDest
-    const lngDest = req.query.lngDest
+    const latDest = parseFloat(req.query.latDest);
+    const lngDest = parseFloat(req.query.lngDest);
 
-    App.getLines();
+    App.getLines().then(() => {
+        let source = Graph.getNearestPoint({
+            lat: latSource,
+            lng: lngSource
+        });
 
-    let source = Graph.getNearestPoint({
-        lat: latSource,
-        lng: lngSource
+        let destination = Graph.getNearestPoint({
+            lat: latDest,
+            lng: lngDest
+        });
+
+        source.isStop = true;
+        destination.isStop = true;
+        destination.cost = {
+            cost: Number.MAX_VALUE,
+            distance: Number.MAX_VALUE
+        };
+
+        Graph.lines.forEach(line => {
+            line.path = Graph.createPath(line.points.data);
+        });
+
+        Graph.pathPoints.set(source.idpoint, source);
+        Graph.pathPoints.set(destination.idpoint, destination);
+
+        Graph.buildInterconnections();
+
+        console.log(source)
+
+        Dijkstra.getCheapestPath(source);
+
+        // console.log('cheapest path ', Graph.pathPoints.get(destination.idpoint).cheapestPath);
+        res.send({
+            path: Graph.pathPoints.get(destination.idpoint).cheapestPath
+        });
+    }).catch(err => {
+        console.error(err);
+        res.status(500).send('Error processing request');
     });
-
-    let destination = Graph.getNearestPoint({
-        lat: latDest,
-        lng: lngDest
-    });
-
-    source.isStop = true;
-    destination.isStop = true;
-    destination.cost = {
-        cost: Number.MAX_VALUE,
-        distance: Number.MAX_VALUE
-    }
-
-    Graph.lines.forEach(line => {
-        line.path = Graph.createPath(line.points.data);
-    });
-
-    Graph.pathPoints.set(source.idpoint, source);
-    Graph.pathPoints.set(destination.idpoint, destination);
-
-    Graph.buildInterconnections();
-
-    Dijkstra.getCheapestPath(source);
-
-    // console.log('cheapest path ', Graph.pathPoints.get(destination.idpoint).cheapestPath)
-})
-
+});
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
 })
