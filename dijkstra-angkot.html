@@ -111,20 +111,15 @@
             }
 
             static getLines() {
-
+                console.log('get lines')
                 // Get Interchanges
                 $.ajax({
                     url: 'http://localhost:3000/api/interchanges',
                     method: 'GET',
                     success: function (data) {
-                        console.log('interchanges ', data)
-
                         data.forEach(i => {
                             let idpoints = [];
                             if (i.idpoints != null) idpoints = i.idpoints.split(",");
-                            console.log('id points ', i.idpoints)
-                            console.log('id interchanges ', i.idinterchange)
-                            // console.log('id points ', idpoints)
 
                             Graph.interchanges.set(i.idinterchange, idpoints);
                         })
@@ -139,18 +134,10 @@
                     url: 'http://localhost:3000/api/lines',
                     method: 'GET',
                     success: function (data) {
-                        console.log('lines ', data)
-
                         let linePromises = [];
                         let idlines = [];
                         data.forEach(line => {
                             if (parseInt(line.count)) {
-                                console.log('line count ', line.count)
-
-                                console.log('line id line ', line.idline)
-
-                                console.log('line ', line)
-
                                 Graph.lines.set(line.idline, line);
                                 linePromises.push($.ajax({
                                     url: `http://localhost:3000/api/lines/${line.idline}`,
@@ -171,7 +158,7 @@
                 });
             }
 
-            static async drawLine(line) { // console.log(line);
+            static async drawLine(line) {
 
                 if (line.points.length == 0) {
                     console.error("This line has no route.");
@@ -184,36 +171,19 @@
                     scale: 2.5,
                 };
 
-                // Create array of points
                 let path = [];
                 let networkPath = [];
 
-                // Clean all previously created markers
-                // App.markers.forEach(marker => marker.setMap(null));
                 line.points.at(0).idinterchange = '1';
                 line.points.at(-1).idinterchange = '1';
-                line.points.forEach(p => { // console.log(p.isStop);
+                line.points.forEach(p => {
                     let pos = new google.maps.LatLng(p.lat, p.lng);
                     pos.idpoint = p.idpoint;
                     pos.isStop = parseInt(p.stop);
                     path.push(pos);
 
-                    // if (!parseInt(p.stop)) return;
-                    // Draw marker on Map
                     if (!App.markers.has(p.idpoint)) {
-                        // if (parseInt(p.idinterchange) || parseInt(p.stop)) {
-                        //   var marker = new google.maps.Marker({
-                        //     position: new google.maps.LatLng(p.lat, p.lng),
-                        //     map: App.map,
-                        //     icon: parseInt(p.idinterchange) ? App.interchangeIcon : (parseInt(p.stop) ? App.stopIcon : App.pointIcon),
-                        //     idline: line.idline,
-                        //     idpoint: p.idpoint,
-                        //     isStop: parseInt(p.stop) ? true : false,
-                        //     title: line.idline + ":" + line.name
-                        //   });
-                        //   // Add marker to marker list
-                        //   App.markers.set(p.idpoint, marker);
-                        // }
+
                     } else App.markers.get(p.idpoint).setMap(App.map);
 
                 });
@@ -333,7 +303,7 @@
                     App.markers.delete(key);
                 });
                 for (let i = 0; i < pathSteps.length; i++) {
-                    let step = pathSteps[i]; // console.log(step);
+                    let step = pathSteps[i];
                     if (idline == null) {
                         color = step.linecolor;
                         idline = step.idline;
@@ -464,7 +434,7 @@
                 return walkPoly;
             }
 
-            static drawNavigationPath(steps) { // console.log(steps);
+            static drawNavigationPath(steps) {
 
                 App.highResStepPolylines.forEach((polyline) => polyline.setMap(null));
                 App.highResStepPolylines = [];
@@ -483,9 +453,6 @@
                             let line = Graph.lines.get(idline);
                             let path = [];
                             let draw = false;
-
-                            console.log('tes')
-                            console.log('line points ', line.points)
 
                             line.points.forEach(point => {
                                 if (point.idpoint == step.from.idpoint) draw = true;
@@ -513,7 +480,6 @@
                                 idpoint: step.to.idpoint,
                                 title: "id:" + step.to.idpoint
                             });
-                            // console.log(startMarker, endMarker);
                             App.markers.set(step.from.idpoint, startMarker);
                             App.markers.set(step.to.idpoint, endMarker);
                             let highResPoly = new google.maps.Polyline({
@@ -544,7 +510,6 @@
                             break;
                         case 'line':
                             let line = Graph.lines.get(step.idline);
-                            console.log(step, line);
                             let towards = (line.direction === "O") ? line.name[line.name.length - 1] : line.name[0];
                             content += `<div class="p-3 border-start border-5" style="border-color:${line.linecolor} !important">`;
                             content += `<i class="bi bi-bus-front-fill me-3"></i>`;
@@ -570,12 +535,11 @@
                 let line = Graph.lines.get(idline);
                 line.points = points;
                 line.path = Graph.createPath(points);
+
                 for (let i = 0; i < line.points.length; i++)
                     Graph.points.set(line.points[i].idpoint, line.points[i]);
                 for (let i = 0; i < line.path.length; i++)
                     Graph.pathPoints.set(line.path[i].idpoint, line.path[i]);
-
-                console.log('build line Graph Points ', Graph.points)
             }
 
             static buildInterconnections() {
@@ -664,16 +628,11 @@
             }
 
             static getNearestPoint(point) {
-                console.log('point of getNearestPoint ', point)
-                console.log('graph points ', Graph.points)
-
-
+                console.log('nearest point')
                 let distance = Number.MAX_VALUE;
                 let nearestPoint = null;
                 Graph.points.forEach((p, k) => {
                     let d = Graph.distance(p, point);
-
-                    console.log('for each getNearestPoint')
 
                     if (d < distance) {
                         distance = d;
@@ -699,21 +658,13 @@
                 while (Dijkstra.unvisited.size > 0) {
                     let current = Dijkstra.getMinimumCostPoint(Dijkstra.unvisited);
 
-                    console.log('current dijkstra ', current);
-
-                    console.log('current dijkstra destination ', current.destinations);
-
                     current.destinations.forEach((dest, key) => {
-                        console.log('dest ', dest)
-
-                        console.log('key ', key)
-
                         let nextPoint = Graph.pathPoints.get(key);
-                        if (nextPoint == undefined) console.log(key, current, dest, Graph.pathPoints);
-                        if (!Dijkstra.visited.has(nextPoint)) {
-                            Dijkstra.calculateMinPrice(nextPoint, dest, current);
-                            Dijkstra.unvisited.add(nextPoint);
-                        }
+                        if (nextPoint == undefined)
+                            if (!Dijkstra.visited.has(nextPoint)) {
+                                Dijkstra.calculateMinPrice(nextPoint, dest, current);
+                                Dijkstra.unvisited.add(nextPoint);
+                            }
                     });
                     Dijkstra.unvisited.delete(current);
                     Dijkstra.visited.add(current);
@@ -740,15 +691,13 @@
 
             static calculateMinPrice(evPoint, edgeCost, currentPoint) {
                 let sourceCost = currentPoint.cost;
-                // console.warn(evPoint, edgeCost, currentPoint);
-                // console.error(sourceCost.cost, edgeCost.cost, evPoint.cost.cost);
+
                 if (sourceCost.cost + edgeCost.cost < evPoint.cost.cost) {
                     evPoint.cost.cost = sourceCost.cost + edgeCost.cost;
                     evPoint.cheapestPath = [];
                     currentPoint.cheapestPath.forEach(p => {
                         evPoint.cheapestPath.push(p);
                     })
-                    evPoint.cheapestPath.push(currentPoint);
                 }
             }
         }
@@ -757,21 +706,6 @@
             await App.initMap();
 
             const { Point } = await google.maps.importLibrary("core");
-            // App.pointIcon = {
-            //   path: "M-4,0a4,4 0 1,0 8,0a4,4 0 1,0 -8,0",
-            //   fillColor: line.linecolor,
-            //   fillOpacity: .5,
-            //   anchor: new Point(0,0),
-            //   strokeWeight: 0,
-            // }
-            // App.stopIcon = {
-            //   path: "M -6,-6 v 12 h 12 v -12 z",
-            //   fillColor: '#FFFFFF',
-            //   fillOpacity: 1,
-            //   anchor: new Point(0,0),
-            //   strokeWeight: 3,
-            //   strokeColor: line.linecolor
-            // }
             App.interchangeIcon = {
                 path: 'M-6,0a6,6 0 1,0 12,0a6,6 0 1,0 -12,0',
                 fillColor: '#FFFFFF',
@@ -796,12 +730,6 @@
                     return;
                 }
 
-                console.log('start marker lat ', App.startMarker.position.lat())
-                console.log('start marker lng ', App.startMarker.position.lng())
-
-                console.log('end marker lat ', App.endMarker.position.lat())
-                console.log('end marker lng ', App.endMarker.position.lng())
-
                 // Get titik awal
                 let source = Graph.getNearestPoint({
                     lat: App.startMarker.position.lat(),
@@ -814,8 +742,21 @@
                     lng: App.endMarker.position.lng()
                 });
 
-                console.log('source ', source)
-                console.log('destination ', destination)
+                $.ajax({
+                    url: 'http://localhost:3003/api/getLatLng',
+                    type: 'GET',
+                    data: {
+                        latSource: App.startMarker.position.lat(),
+                        lngSource: App.startMarker.position.lng(),
+                        latDest: App.endMarker.position.lat(),
+                        lngDest: App.endMarker.position.lng()
+                    },
+                    success: function (response) {
+                    },
+                    error: function (error) {
+                        console.error('Error: ', error);
+                    }
+                })
 
                 // include source and destination point as stops
                 source.isStop = true;
@@ -838,15 +779,12 @@
                 App.drawLine(Graph.lines.get(source.idline));
                 App.drawLine(Graph.lines.get(destination.idline));
 
-                // console.log("S:", source);
-                // console.log("D:", destination);
-
                 Dijkstra.getCheapestPath(source);
 
                 let steps = App.buildNavigationSteps(destination, Graph.pathPoints.get(destination.idpoint).cheapestPath);
 
-                // remove source and destination points from Graph
-                // if it is not a point in an interchange.
+                // console.log('cheapest path ', Graph.pathPoints.get(destination.idpoint).cheapestPath)
+
                 delete source.isStop;
                 delete destination.isStop;
                 if (!parseInt(source.idinterchange) > 0) Graph.pathPoints.delete(source.idpoint);
@@ -854,8 +792,6 @@
 
                 App.drawNavigationPath(steps);
                 App.displayNavigationPath(steps);
-
-                console.log('step ', steps)
             });
 
             $('#btn-clear-map').on('click', () => {
