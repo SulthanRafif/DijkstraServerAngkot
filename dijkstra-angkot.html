@@ -755,48 +755,45 @@
                         lngDest: App.endMarker.position.lng()
                     },
                     success: function (response) {
+                        console.log('response from server ', response)
+
+                        App.drawNavigationPath(response);
+                        App.displayNavigationPath(response);
                     },
                     error: function (error) {
                         console.error('Error: ', error);
                     }
                 })
 
-                // include source and destination point as stops
-                source.isStop = true;
-                destination.isStop = true;
-                destination.cost = {
-                    cost: Number.MAX_VALUE,
-                    distance: Number.MAX_VALUE
-                }
+                // source.isStop = true;
+                // destination.isStop = true;
+                // destination.cost = {
+                //     cost: Number.MAX_VALUE,
+                //     distance: Number.MAX_VALUE
+                // }
 
-                // re-create Graph with source and destination points included
-                Graph.lines.forEach(line => {
-                    line.path = Graph.createPath(line.points);
-                });
+                // Graph.lines.forEach(line => {
+                //     line.path = Graph.createPath(line.points);
+                // });
 
-                // include source and destinations in path analysis
-                Graph.pathPoints.set(source.idpoint, source);
-                Graph.pathPoints.set(destination.idpoint, destination);
-                Graph.buildInterconnections();
+                // Graph.pathPoints.set(source.idpoint, source);
+                // Graph.pathPoints.set(destination.idpoint, destination);
+                // Graph.buildInterconnections();
 
                 App.drawLine(Graph.lines.get(source.idline));
                 App.drawLine(Graph.lines.get(destination.idline));
 
-                Dijkstra.getCheapestPath(source);
+                // Dijkstra.getCheapestPath(source);
 
-                let steps = App.buildNavigationSteps(destination, Graph.pathPoints.get(destination.idpoint).cheapestPath);
+                // let steps = App.buildNavigationSteps(destination, Graph.pathPoints.get(destination.idpoint).cheapestPath);
 
-                console.log('steps ', steps)
+                // delete source.isStop;
+                // delete destination.isStop;
+                // if (!parseInt(source.idinterchange) > 0) Graph.pathPoints.delete(source.idpoint);
+                // if (!parseInt(destination.idinterchange) > 0) Graph.pathPoints.delete(destination.idpoint);
 
-                // console.log('cheapest path ', Graph.pathPoints.get(destination.idpoint).cheapestPath)
-
-                delete source.isStop;
-                delete destination.isStop;
-                if (!parseInt(source.idinterchange) > 0) Graph.pathPoints.delete(source.idpoint);
-                if (!parseInt(destination.idinterchange) > 0) Graph.pathPoints.delete(destination.idpoint);
-
-                App.drawNavigationPath(steps);
-                App.displayNavigationPath(steps);
+                // App.drawNavigationPath(steps);
+                // App.displayNavigationPath(steps);
             });
 
             $('#btn-clear-map').on('click', () => {

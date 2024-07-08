@@ -418,9 +418,12 @@ app.get('/api/getLatLng', (req, res) => {
             lngDest
         );
 
-        console.log('steps ', steps)
+        delete source.isStop;
+        delete destination.isStop;
+        if (!parseInt(source.idinterchange) > 0) Graph.pathPoints.delete(source.idpoint);
+        if (!parseInt(destination.idinterchange) > 0) Graph.pathPoints.delete(destination.idpoint);
 
-        // console.log('cheapest path ', Graph.pathPoints.get(destination.idpoint).cheapestPath);
+        res.json(steps);
     }).catch(err => {
         console.error(err);
         res.status(500).send('Error processing request');
