@@ -111,7 +111,6 @@
             }
 
             static getLines() {
-                console.log('get lines')
                 // Get Interchanges
                 $.ajax({
                     url: 'http://localhost:3000/api/interchanges',
@@ -122,6 +121,7 @@
                             if (i.idpoints != null) idpoints = i.idpoints.split(",");
 
                             Graph.interchanges.set(i.idinterchange, idpoints);
+
                         })
                     },
                     error: function (error) {
@@ -339,6 +339,7 @@
                                 });
                             }
                             let line = Graph.lines.get(idline);
+
                             let p = [];
                             let draw = false;
                             line.points.forEach(point => {
@@ -381,6 +382,7 @@
                         });
                     }
                     let line = Graph.lines.get(idline);
+
                     let p = [];
                     let draw = false;
                     line.points.forEach(point => {
@@ -580,6 +582,7 @@
                         point.cheapestPath = [];
                         path.push(point);
                         prevPoint = point;
+
                         continue;
                     }
                     distance += (Graph.distance(point, prevPoint) / Graph.oneMeterInDegree);
@@ -628,7 +631,6 @@
             }
 
             static getNearestPoint(point) {
-                console.log('nearest point')
                 let distance = Number.MAX_VALUE;
                 let nearestPoint = null;
                 Graph.points.forEach((p, k) => {
@@ -669,6 +671,7 @@
                     Dijkstra.unvisited.delete(current);
                     Dijkstra.visited.add(current);
                 }
+
             }
 
             static getMinimumCostPoint(unvisited, by = 'COST') {
@@ -782,6 +785,8 @@
                 Dijkstra.getCheapestPath(source);
 
                 let steps = App.buildNavigationSteps(destination, Graph.pathPoints.get(destination.idpoint).cheapestPath);
+
+                console.log('steps ', steps)
 
                 // console.log('cheapest path ', Graph.pathPoints.get(destination.idpoint).cheapestPath)
 

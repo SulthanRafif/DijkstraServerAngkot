@@ -7,12 +7,155 @@ const axios = require('axios')
 app.use(cors());
 
 class App {
+    static steps = [];
+    static stepPolylines = new Map();
+    static markers = new Map();
+
+    static buildNavigationSteps(
+        destination,
+        pathSteps,
+        latStartMarker,
+        lngStartMarker,
+        latEndMarker,
+        lngEndMarker,
+    ) {
+        let color = null;
+        let idline = null;
+        let path = [];
+        pathSteps.push(destination);
+        App.steps = [];
+        App.stepPolylines.forEach((polyline, k) => {
+            polyline.setMap(null);
+            App.stepPolylines.delete(k);
+        });
+        App.markers.forEach((marker, key) => {
+            marker.setMap(null);
+            App.markers.delete(key);
+        });
+        for (let i = 0; i < pathSteps.length; i++) {
+            let step = pathSteps[i];
+            if (idline == null) {
+                color = step.linecolor;
+                idline = step.idline;
+                path.push({
+                    idpoint: step.idpoint,
+                    lat: parseFloat(step.lat),
+                    lng: parseFloat(step.lng)
+                });
+                App.steps.push({
+                    type: 'walk',
+                    from: {
+                        lat: latStartMarker,
+                        lng: lngStartMarker
+                    },
+                    to: { lat: parseFloat(step.lat), lng: parseFloat(step.lng) }
+                });
+                continue;
+            } else {
+                if (step.idline == idline) {
+                    path.push({
+                        idpoint: step.idpoint,
+                        lat: parseFloat(step.lat),
+                        lng: parseFloat(step.lng)
+                    });
+                    continue;
+                } else {
+                    let prevStep = App.steps[App.steps.length - 1];
+                    if (prevStep.type == 'line') {
+                        App.steps.push({
+                            type: 'walk',
+                            from: prevStep.to,
+                            to: path[0]
+                        });
+                    }
+                    let line = Graph.lines.get(idline);
+
+                    let p = [];
+                    let draw = false;
+                    line.points.data.forEach(point => {
+                        if (point.idpoint == path[0].idpoint) draw = true;
+                        if (draw) {
+                            p.push({
+                                lat: parseFloat(point.lat),
+                                lng: parseFloat(point.lng)
+                            });
+                        }
+                        if (point.idpoint == path[path.length - 1].idpoint) draw = false;
+                    });
+                    App.steps.push({
+                        type: 'line',
+                        idline: idline,
+                        strokeColor: color,
+                        from: path[0],
+                        to: path[path.length - 1],
+                        distance: Graph.pathDistance(p)
+                    });
+
+                    color = step.linecolor;
+                    idline = step.idline;
+                    path = [];
+                    path.push({
+                        idpoint: step.idpoint,
+                        lat: parseFloat(step.lat),
+                        lng: parseFloat(step.lng)
+                    });
+                }
+            }
+        };
+        if (path.length) {
+            let prevStep = App.steps[App.steps.length - 1];
+            if (prevStep.type == 'line') {
+                App.steps.push({
+                    type: 'walk',
+                    from: prevStep.to,
+                    to: path[0]
+                });
+            }
+            let line = Graph.lines.get(idline);
+            let p = [];
+            let draw = false;
+
+            line.points.data.forEach(point => {
+                if (point.idpoint == path[0].idpoint) draw = true;
+                if (draw) {
+                    p.push({
+                        lat: parseFloat(point.lat),
+                        lng: parseFloat(point.lng)
+                    });
+                }
+                if (point.idpoint == path[path.length - 1].idpoint) draw = false;
+            });
+            App.steps.push({
+                type: 'line',
+                idline: idline,
+                strokeColor: color,
+                from: path[0],
+                to: path[path.length - 1],
+                distance: Graph.pathDistance(p)
+            });
+            prevStep = App.steps[App.steps.length - 1];
+            if (prevStep.type == 'line') {
+                App.steps.push({
+                    type: 'walk',
+                    from: App.steps[App.steps.length - 1].to,
+                    to: {
+                        lat: latEndMarker,
+                        lng: lngEndMarker
+                    }
+                });
+            }
+        }
+        return App.steps;
+    }
+
     static getLines() {
         return Promise.all([
             axios.get('http://localhost:3000/api/interchanges')
                 .then(response => {
                     response.data.forEach(i => {
                         let idpoints = [];
+                        if (i.idpoints != null) idpoints = i.idpoints.split(",");
+
                         Graph.interchanges.set(i.idinterchange, idpoints);
                     });
                 }),
@@ -107,6 +250,7 @@ class Graph {
                 point.cheapestPath = [];
                 path.push(point);
                 prevPoint = point;
+
                 continue;
             }
             distance += (Graph.distance(point, prevPoint) / Graph.oneMeterInDegree);
@@ -263,14 +407,20 @@ app.get('/api/getLatLng', (req, res) => {
 
         Graph.buildInterconnections();
 
-        console.log(source)
-
         Dijkstra.getCheapestPath(source);
 
+        let steps = App.buildNavigationSteps(
+            destination,
+            Graph.pathPoints.get(destination.idpoint).cheapestPath,
+            latSource,
+            lngSource,
+            latDest,
+            lngDest
+        );
+
+        console.log('steps ', steps)
+
         // console.log('cheapest path ', Graph.pathPoints.get(destination.idpoint).cheapestPath);
-        res.send({
-            path: Graph.pathPoints.get(destination.idpoint).cheapestPath
-        });
     }).catch(err => {
         console.error(err);
         res.status(500).send('Error processing request');
